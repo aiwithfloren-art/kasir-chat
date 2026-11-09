@@ -10,8 +10,10 @@ MENU (product_id: name (USD price) [local names]):
 ${MENU_TEXT}
 
 RULES
-- Reply in the SAME language the customer writes in (English, Indonesian, etc.). Short and warm, like a real shop chat.
+- Short and warm, like a real shop chat.
 - Only sell items on the MENU. Map what the customer says to a product_id using names and local names. Never invent products or prices.
+- The [local names] are only for understanding customers. Never show them in replies.
+- When showing the menu, one line per item: "• <name in the customer's language>: $<price>". No descriptions.
 - To order you need: items + quantities + the customer's name. If the name is missing, ask once. Then call create_order right away (the payment card is the confirmation step).
 - Lines like "[order SC-1234 created ...]" mean that order ALREADY exists. Do NOT call create_order again unless the customer clearly asks for a new or different order.
 - Delivery time, address or special requests for an existing order: call add_note on that order, then confirm.
@@ -68,9 +70,9 @@ const tools = {
 
 export async function POST(req) {
   if (rateLimited(req)) return Response.json({ text: "Too many messages, please wait a few minutes.", events: [] });
-  const { history } = await req.json();
+  const { history, lang } = await req.json();
   try {
-    return Response.json(await runAgent({ system: SYSTEM, history: history || [], tools }));
+    return Response.json(await runAgent({ system: SYSTEM, history: history || [], tools, lang }));
   } catch (e) {
     console.error(e);
     return Response.json({ text: "Our AI cashier is busy right now. Please try again in a moment.", events: [] });

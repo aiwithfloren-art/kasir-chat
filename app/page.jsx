@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 
+import { LANGS, T } from "@/lib/i18n";
+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const usd = (n) => `$${Number(n).toFixed(2)}`;
@@ -26,7 +28,7 @@ function loadPaypal() {
   return sdkPromise;
 }
 
-function PayCard({ order, onPaid }) {
+function PayCard({ order, onPaid, t }) {
   const box = useRef(null);
   const [paid, setPaid] = useState(false);
   const [err, setErr] = useState("");
@@ -48,9 +50,9 @@ function PayCard({ order, onPaid }) {
             if (j.order?.status === "PAID") {
               setPaid(true);
               onPaid(j.order);
-            } else setErr("Payment could not be confirmed. Please try again.");
+            } else setErr(t.payFail);
           },
-          onError: () => setErr("PayPal had a problem. Please try again."),
+          onError: () => setErr(t.paypalErr),
         })
         .render(box.current);
     });
@@ -60,7 +62,7 @@ function PayCard({ order, onPaid }) {
   }, [order.paypal_order_id]);
   return (
     <div className="card">
-      <h4>Order {order.order_id}</h4>
+      <h4>{t.order} {order.order_id}</h4>
       {order.items.map((i) => (
         <div className="row" key={i.id}>
           <span>
@@ -70,16 +72,16 @@ function PayCard({ order, onPaid }) {
         </div>
       ))}
       <div className="row total">
-        <span>Total</span>
+        <span>{t.total}</span>
         <span>{usd(order.total)}</span>
       </div>
-      {paid ? <div className="paid">✓ Paid with PayPal</div> : <div className="pp" ref={box} />}
+      {paid ? <div className="paid">{t.paidPaypal}</div> : <div className="pp" ref={box} />}
       {err && <div style={{ color: "var(--coral)", fontSize: 12 }}>{err}</div>}
     </div>
   );
 }
 
-function RefundCard({ proposal, onDone }) {
+function RefundCard({ proposal, onDone, t }) {
   const [state, setState] = useState("idle");
   const approve = async () => {
     setState("busy");
@@ -94,7 +96,7 @@ function RefundCard({ proposal, onDone }) {
   };
   return (
     <div className="card">
-      <h4>Refund needs your approval</h4>
+      <h4>{t.refundTitle}</h4>
       <div className="row">
         <span>
           {proposal.order_id} · {proposal.customer}
@@ -103,10 +105,10 @@ function RefundCard({ proposal, onDone }) {
       </div>
       {proposal.reason && <div className="row" style={{ color: "var(--muted)" }}>{proposal.reason}</div>}
       {state === "done" ? (
-        <div className="paid">✓ Refunded via PayPal</div>
+        <div className="paid">{t.refunded}</div>
       ) : (
         <button className="approve" disabled={state === "busy"} onClick={approve}>
-          {state === "busy" ? "Refunding…" : state === "error" ? "Failed, try again" : "Approve refund"}
+          {state === "busy" ? t.refunding : state === "error" ? t.refundFail : t.approve}
         </button>
       )}
     </div>
@@ -114,7 +116,7 @@ function RefundCard({ proposal, onDone }) {
 }
 
 // ---------- Generic chat ----------
-function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject }) {
+function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject, t, lang }) {
   const [items, setItems] = useState([{ kind: "msg", role: "model", text: greeting }]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -149,7 +151,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
       const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history }),
+        body: JSON.stringify({ history, lang }),
       });
       const j = await r.json();
       const add = [];
@@ -161,7 +163,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
       setItems((cur) => [...cur, ...add]);
       onAfterReply?.();
     } catch {
-      setItems((cur) => [...cur, { kind: "msg", role: "model", text: "Connection problem, please try again." }]);
+      setItems((cur) => [...cur, { kind: "msg", role: "model", text: t.connError }]);
     }
     setBusy(false);
   };
@@ -183,7 +185,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
             <div key={i} className={`msg ${m.role}`}>{m.text}</div>
           )
         )}
-        {busy && <div className="typing">AI is typing…</div>}
+        {busy && <div className="typing">{t.typing}</div>}
         <div ref={end} />
       </div>
       {chips && (
@@ -203,7 +205,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
         }}
       >
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} />
-        <button disabled={busy}>Send</button>
+        <button disabled={busy}>{t.send}</button>
       </form>
     </>
   );
@@ -212,6 +214,22 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
 // ---------- Page ----------
 export default function Home() {
   const [orders, setOrders] = useState([]);
+  const [lang, setLangState] = useState("en");
+  const t = T[lang];
+  const tRef = useRef(t);
+  tRef.current = t;
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("kasir-lang");
+      if (T[saved]) setLangState(saved);
+    } catch {}
+  }, []);
+  const setLang = (l) => {
+    setLangState(l);
+    try {
+      localStorage.setItem("kasir-lang", l);
+    } catch {}
+  };
   const buyerApi = useRef(null);
   const gridRef = useRef(null);
   // Table view the owner's AI assistant can set: { status: ALL|PAID|PENDING|REFUNDED, period: today|week|all }
@@ -242,31 +260,32 @@ export default function Home() {
 
   const columns = useMemo(
     () => [
-      { field: "id", headerName: "Order", width: 105 },
-      { field: "customer", width: 110 },
+      { field: "id", headerName: t.cols.id, width: 105 },
+      { field: "customer", headerName: t.cols.customer, width: 110 },
       {
-        headerName: "Items",
+        headerName: t.cols.items,
         flex: 1,
         minWidth: 180,
         valueGetter: (p) => p.data.items?.map((i) => `${i.qty}× ${i.name}`).join(", ") ?? p.data.itemsLabel,
       },
-      { field: "total", width: 95, enableCellChangeFlash: true, valueFormatter: (p) => usd(p.value) },
+      { field: "total", headerName: t.cols.total, width: 95, enableCellChangeFlash: true, valueFormatter: (p) => usd(p.value) },
       {
         field: "status",
+        headerName: t.cols.status,
         width: 115,
         enableCellChangeFlash: true,
         cellRenderer: (p) => (p.node.rowPinned ? p.value : <span className={`pill ${p.value}`}>{p.value}</span>),
       },
       {
         field: "createdAt",
-        headerName: "Time",
+        headerName: t.cols.time,
         width: 150,
         sort: "desc",
         valueFormatter: (p) =>
           p.value && new Date(p.value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       },
     ],
-    []
+    [t]
   );
 
   const theme = useMemo(
@@ -293,26 +312,29 @@ export default function Home() {
       n++;
       sum += node.data.total;
     });
-    const row = { id: "TOTAL", customer: `${n} orders`, itemsLabel: "Total value in view", total: sum, status: "" };
+    const row = { id: "TOTAL", customer: tRef.current.totalRow(n), itemsLabel: tRef.current.totalLabel, total: sum, status: "" };
     const old = api.getPinnedBottomRow(0)?.data;
     // Only touch the totals row when it really changed, so the flash means "something happened".
-    if (!old || old.customer !== row.customer || old.total !== row.total) api.setGridOption("pinnedBottomRowData", [row]);
+    if (!old || old.customer !== row.customer || old.itemsLabel !== row.itemsLabel || old.total !== row.total) api.setGridOption("pinnedBottomRowData", [row]);
   }, []);
   useEffect(() => {
     gridRef.current?.api?.onFilterChanged();
   }, [view]);
+  useEffect(() => {
+    updateTotals();
+  }, [lang, updateTotals]);
   const applyView = (ev) => {
     const v = ev.result?.view;
     if (!v) return;
     setView(v.status === "ALL" && v.period === "all" ? null : v);
   };
   const viewLabel = (v) =>
-    [v.status && v.status !== "ALL" ? v.status : "all statuses", { today: "last 24h", week: "last 7 days", all: "all time" }[v.period || "all"]].join(" · ");
+    [v.status && v.status !== "ALL" ? v.status : t.allStatuses, t.periods[v.period || "all"]].join(" · ");
 
   const onPaid = (order) => {
     refresh();
-    buyerApi.current?.note(`PayPal payment received · ${order.id} · ${usd(order.total)}`);
-    buyerApi.current?.send(`[PAYMENT_CONFIRMED] order ${order.id}, total ${usd(order.total)}, paid via PayPal.`, {
+    buyerApi.current?.note(t.paymentNote(order.id, usd(order.total)));
+    buyerApi.current?.send(`[PAYMENT_CONFIRMED] order ${order.id}, total ${usd(order.total)}, paid via PayPal. (System note: reply in the customer's language.)`, {
       hidden: true,
     });
   };
@@ -323,9 +345,16 @@ export default function Home() {
         <div className="logo">K</div>
         <div>
           <h1>Kasir Chat</h1>
-          <p>AI cashier for small sellers who sell through chat · powered by PayPal + AI</p>
+          <p>{t.tagline}</p>
         </div>
-        <span className="badge">PayPal Sandbox demo · no real money</span>
+        <span className="badge">{t.badge}</span>
+        <div className="langs" role="group" aria-label="Language">
+          {LANGS.map((l) => (
+            <button key={l.code} className={l.code === lang ? "on" : ""} onClick={() => setLang(l.code)} title={l.name}>
+              {l.label}
+            </button>
+          ))}
+        </div>
       </header>
       <main className="split">
         <section className="panel buyer">
@@ -334,22 +363,20 @@ export default function Home() {
             <div>
               <b>Sunny Crumbs Bakery</b>
               <br />
-              <span>Customer view · chat to order</span>
+              <span>{t.customerView}</span>
             </div>
           </div>
           <Chat
+            key={`buyer-${lang}`}
+            t={t}
+            lang={lang}
             endpoint="/api/buyer"
-            greeting="Hi! Welcome to Sunny Crumbs Bakery 🍰 What would you like to order today?"
-            placeholder="e.g. 2 brownie boxes for tomorrow, I'm Rina"
-            chips={[
-              "What's on the menu?",
-              "2 brownie boxes for pickup tomorrow, I'm Jess",
-              "Hola, quiero un pastel de pandan, soy Carlos",
-              "Kak, pesan 2 kue lapis ya, atas nama Rina",
-            ]}
+            greeting={t.buyerGreeting}
+            placeholder={t.buyerPlaceholder}
+            chips={t.buyerChips}
             inject={buyerApi}
             renderEvent={(ev) =>
-              ev.tool === "create_order" && ev.result?.paypal_order_id ? <PayCard order={ev.result} onPaid={onPaid} /> : null
+              ev.tool === "create_order" && ev.result?.paypal_order_id ? <PayCard order={ev.result} onPaid={onPaid} t={t} /> : null
             }
             onAfterReply={refresh}
           />
@@ -358,28 +385,28 @@ export default function Home() {
         <section className="owner">
           <div className="kpis">
             <div className="kpi">
-              <small>Revenue (24h)</small>
+              <small>{t.revenue}</small>
               <div>{usd(kpi.revenue)}</div>
             </div>
             <div className="kpi">
-              <small>Paid orders</small>
+              <small>{t.paidOrders}</small>
               <div>{kpi.paid}</div>
             </div>
             <div className="kpi">
-              <small>Waiting for payment</small>
+              <small>{t.waiting}</small>
               <div>{kpi.pending}</div>
             </div>
           </div>
 
           <div className="panel grid">
             <div className="head">
-              <b>Orders</b>
+              <b>{t.orders}</b>
               {view ? (
                 <button className="filterchip" onClick={() => setView(null)}>
-                  Filtered by AI: {viewLabel(view)} ✕
+                  {t.filtered}: {viewLabel(view)} ✕
                 </button>
               ) : (
-                <span>updates live when a PayPal payment lands</span>
+                <span>{t.ordersHint}</span>
               )}
             </div>
             <div className="ag">
@@ -402,17 +429,20 @@ export default function Home() {
 
           <div className="panel">
             <div className="head">
-              <b>Ask your shop</b>
-              <span>owner assistant</span>
+              <b>{t.askShop}</b>
+              <span>{t.ownerAssistant}</span>
             </div>
             <Chat
+              key={`owner-${lang}`}
+              t={t}
+              lang={lang}
               endpoint="/api/owner"
-              greeting="Hi boss! Ask me anything about your orders and sales."
-              placeholder="e.g. How much did we make today?"
-              chips={["How much did we make today?", "Who hasn't paid yet?", "What's my best seller this week?"]}
+              greeting={t.ownerGreeting}
+              placeholder={t.ownerPlaceholder}
+              chips={t.ownerChips}
               onEvent={applyView}
               renderEvent={(ev) =>
-                ev.tool === "propose_refund" && ev.result?.order_id ? <RefundCard proposal={ev.result} onDone={refresh} /> : null
+                ev.tool === "propose_refund" && ev.result?.order_id ? <RefundCard proposal={ev.result} onDone={refresh} t={t} /> : null
               }
             />
           </div>

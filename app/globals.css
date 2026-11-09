@@ -60,3 +60,9 @@ form.input button { padding: 0 16px; border: 0; border-radius: 12px; background:
 .filterchip { margin-left: auto; border: 1px solid var(--coral); background: #fff4f1; color: var(--coral); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .ag-row.pendingrow { background: #fffaf0; }
 .ag-row.totalrow { font-weight: 700; background: #faf7f0; }
+
+/* Language switch */
+.langs { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: #fff; }
+.langs button { border: 0; background: transparent; padding: 5px 11px; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.langs button.on { background: var(--coral); color: #fff; }
+@media (max-width: 900px) { header.top { flex-wrap: wrap; } header.top .badge { margin-left: 0; } }

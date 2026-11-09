@@ -2,7 +2,7 @@ import { runAgent, rateLimited } from "@/lib/ai";
 import { SHOP, allOrders, findOrder } from "@/lib/store";
 
 const SYSTEM = `You are the business assistant for the owner of "${SHOP.name}". Answer questions about orders and sales.
-- Reply in the owner's language. Be brief: numbers first, then one useful insight or suggestion.
+- Be brief: numbers first, then one useful insight or suggestion.
 - Always use tools for data. Never guess numbers. Money is USD.
 - To refund, call propose_refund. It does NOT move money: the owner must press Approve on the card. Say so.
 - Orders marked demo=true are sample history and cannot be refunded.
@@ -75,9 +75,9 @@ const tools = {
 
 export async function POST(req) {
   if (rateLimited(req)) return Response.json({ text: "Too many messages, please wait a few minutes.", events: [] });
-  const { history } = await req.json();
+  const { history, lang } = await req.json();
   try {
-    return Response.json(await runAgent({ system: SYSTEM, history: history || [], tools }));
+    return Response.json(await runAgent({ system: SYSTEM, history: history || [], tools, lang }));
   } catch (e) {
     console.error(e);
     return Response.json({ text: "The assistant is busy right now. Please try again in a moment.", events: [] });
