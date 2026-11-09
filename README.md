@@ -10,7 +10,7 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 4. **Owner sees it live** in an AG Grid dashboard and can **ask the shop questions** in plain language ("How much did we make today?", "Who hasn't paid yet?").
 5. **Refunds with a human in the loop**: the AI can propose a refund, but money only moves after the owner clicks **Approve**.
 
-> Demo runs on **PayPal Sandbox**. No real money moves.
+> **Live demo: https://kasir-chat.vercel.app** · runs on **PayPal Sandbox**, no real money moves.
 
 ## How PayPal is used
 
@@ -29,7 +29,7 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 
 ## Tech stack
 
-Next.js 16 (React 19) · PayPal Orders v2 + Payments v2 + JS SDK · OpenRouter (Gemini 2.5 Flash) · AG Grid Community · hosted on Render
+Next.js 16 (React 19) · PayPal Orders v2 + Payments v2 + JS SDK · OpenRouter (Gemini 2.5 Flash) · AG Grid Community · Upstash Redis · hosted on Vercel
 
 ## Run it locally
 
@@ -48,13 +48,15 @@ PAYPAL_CLIENT_ID=      # PayPal Developer Dashboard > Apps & Credentials (Sandbo
 PAYPAL_CLIENT_SECRET=
 OPENROUTER_API_KEY=    # openrouter.ai > Keys
 AI_MODELS=google/gemini-2.5-flash,openai/gpt-4.1-mini   # optional
+KV_REST_API_URL=       # optional: Upstash Redis, so orders survive restarts
+KV_REST_API_TOKEN=
 ```
 
 To pay, log in to the PayPal popup with a **sandbox Personal account** (developer.paypal.com > Testing Tools > Sandbox Accounts). Judges: a ready-made sandbox buyer login is in the Devpost submission's testing notes.
 
 ## Notes
 
-- Orders are kept in memory and the shop starts with demo orders, so the demo resets when the server restarts.
+- Real sandbox orders are saved in Upstash Redis when it is configured (in memory otherwise). The shop always shows a few sample orders so the dashboard is never empty.
 - Prices are in USD because the sandbox checkout uses USD.
 
 ## License
