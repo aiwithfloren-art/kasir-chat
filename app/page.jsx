@@ -219,7 +219,8 @@ export default function Home() {
       .then((j) => setOrders(j.orders));
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 4000);
+    // Only poll while the tab is visible, so an idle open tab doesn't burn database reads.
+    const t = setInterval(() => document.visibilityState === "visible" && refresh(), 4000);
     return () => clearInterval(t);
   }, []);
 
