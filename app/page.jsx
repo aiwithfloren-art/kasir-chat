@@ -301,7 +301,6 @@ export default function Home() {
   useEffect(() => {
     gridRef.current?.api?.onFilterChanged();
   }, [view]);
-  useEffect(() => {
   const applyView = (ev) => {
     const v = ev.result?.view;
     if (!v) return;
