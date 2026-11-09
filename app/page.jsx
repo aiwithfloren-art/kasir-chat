@@ -375,7 +375,7 @@ export default function Home() {
     return {
       revenue: paid.reduce((s, o) => s + o.total, 0),
       paid: paid.length,
-      pending: day.filter((o) => o.status === "PENDING").length,
+      pending: orders.filter((o) => o.status === "PENDING").length, // all unpaid money, not just today
     };
   }, [orders]);
 
