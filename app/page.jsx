@@ -30,7 +30,7 @@ function loadPaypal() {
 
 function PayCard({ order, onPaid, t }) {
   const box = useRef(null);
-  const [paid, setPaid] = useState(false);
+  const [paid, setPaid] = useState(null);
   const [err, setErr] = useState("");
   useEffect(() => {
     let alive = true;
@@ -48,7 +48,7 @@ function PayCard({ order, onPaid, t }) {
             });
             const j = await r.json();
             if (j.order?.status === "PAID") {
-              setPaid(true);
+              setPaid(j.order);
               onPaid(j.order);
             } else setErr(t.payFail);
           },
@@ -75,7 +75,14 @@ function PayCard({ order, onPaid, t }) {
         <span>{t.total}</span>
         <span>{usd(order.total)}</span>
       </div>
-      {paid ? <div className="paid">{t.paidPaypal}</div> : <div className="pp" ref={box} />}
+      {paid ? (
+        <>
+          <div className="paid">{t.paidPaypal}</div>
+          <div className="tx">{t.txId}: {paid.captureId}</div>
+        </>
+      ) : (
+        <div className="pp" ref={box} />
+      )}
       {err && <div style={{ color: "var(--coral)", fontSize: 12 }}>{err}</div>}
     </div>
   );
@@ -115,6 +122,34 @@ function RefundCard({ proposal, onDone, t }) {
   );
 }
 
+function ReminderCard({ result, t }) {
+  if (!result.reminded?.length) return null;
+  return (
+    <div className="card">
+      <h4>{t.remindersTitle(result.reminded.length, usd(result.total_chased))}</h4>
+      {result.reminded.map((r) => (
+        <div className="remind" key={r.order_id}>
+          <div className="row">
+            <span>
+              {r.order_id} · {r.customer}
+            </span>
+            <b>{usd(r.total)}</b>
+          </div>
+          <div className="remindmsg">{r.message.replace(r.pay_link, "").trim()}</div>
+          <div className="row">
+            <span className="sent">✓ {t.sent}</span>
+            {r.pay_link && (
+              <a href={r.pay_link} target="_blank" rel="noreferrer">
+                {t.openLink}
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ---------- Generic chat ----------
 function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject, t, lang }) {
   const [items, setItems] = useState([{ kind: "msg", role: "model", text: greeting }]);
@@ -140,9 +175,11 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
         if (m.kind === "msg") return { role: m.role, text: m.text };
         if (m.kind === "event" && m.ev.result?.order_id) {
           const r = m.ev.result;
-          return m.ev.tool === "create_order"
-            ? { role: "model", text: `[order ${r.order_id} created, total $${r.total}, waiting for PayPal payment]` }
-            : { role: "model", text: `[refund for ${r.order_id} proposed, waiting for owner approval]` };
+          if (m.ev.tool === "create_order")
+            return { role: "model", text: `[order ${r.order_id} created, total $${r.total}, waiting for PayPal payment]` };
+          if (m.ev.tool === "reminder")
+            return { role: "model", text: `[payment reminder sent for order ${r.order_id} with a new PayPal button]` };
+          return { role: "model", text: `[refund for ${r.order_id} proposed, waiting for owner approval]` };
         }
         return null;
       })
@@ -170,7 +207,12 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
 
   // let parent push system notes / hidden prompts
   useEffect(() => {
-    if (inject) inject.current = { send, note: (t) => setItems((c) => [...c, { kind: "note", text: t }]) };
+    if (inject)
+      inject.current = {
+        send,
+        note: (t) => setItems((c) => [...c, { kind: "note", text: t }]),
+        push: (item) => setItems((c) => [...c, item]),
+      };
   });
 
   return (
@@ -231,6 +273,7 @@ export default function Home() {
     } catch {}
   };
   const buyerApi = useRef(null);
+  const buyerOrderIds = useRef(new Set()); // orders placed in this browser's customer chat
   const gridRef = useRef(null);
   // Table view the owner's AI assistant can set: { status: ALL|PAID|PENDING|REFUNDED, period: today|week|all }
   const [view, setView] = useState(null);
@@ -275,6 +318,18 @@ export default function Home() {
         width: 115,
         enableCellChangeFlash: true,
         cellRenderer: (p) => (p.node.rowPinned ? p.value : <span className={`pill ${p.value}`}>{p.value}</span>),
+      },
+      {
+        headerName: t.cols.followUp,
+        width: 130,
+        enableCellChangeFlash: true,
+        valueGetter: (p) => (p.data.reminders?.length ? p.data.reminders.length : null),
+        cellRenderer: (p) =>
+          p.value ? (
+            <span className="pill remindpill" title={new Date(p.data.reminders.at(-1)).toLocaleString()}>
+              {t.reminded(p.value)}
+            </span>
+          ) : null,
       },
       {
         field: "createdAt",
@@ -323,6 +378,16 @@ export default function Home() {
   useEffect(() => {
     updateTotals();
   }, [lang, updateTotals]);
+  const onOwnerEvent = (ev) => {
+    applyView(ev);
+    if (ev.tool === "send_payment_reminders") {
+      refresh();
+      // Reminders for orders placed in the customer chat on this page show up there, with a fresh PayPal button.
+      for (const r of ev.result?.reminded || []) {
+        if (buyerOrderIds.current.has(r.order_id)) buyerApi.current?.push({ kind: "event", ev: { tool: "reminder", result: r } });
+      }
+    }
+  };
   const applyView = (ev) => {
     const v = ev.result?.view;
     if (!v) return;
@@ -378,8 +443,16 @@ export default function Home() {
             placeholder={t.buyerPlaceholder}
             chips={t.buyerChips}
             inject={buyerApi}
+            onEvent={(ev) => ev.tool === "create_order" && ev.result?.order_id && buyerOrderIds.current.add(ev.result.order_id)}
             renderEvent={(ev) =>
-              ev.tool === "create_order" && ev.result?.paypal_order_id ? <PayCard order={ev.result} onPaid={onPaid} t={t} /> : null
+              ev.tool === "create_order" && ev.result?.paypal_order_id ? (
+                <PayCard order={ev.result} onPaid={onPaid} t={t} />
+              ) : ev.tool === "reminder" ? (
+                <>
+                  <div className="msg model">{ev.result.chat_message}</div>
+                  <PayCard order={ev.result} onPaid={onPaid} t={t} />
+                </>
+              ) : null
             }
             onAfterReply={refresh}
           />
@@ -443,9 +516,13 @@ export default function Home() {
               greeting={t.ownerGreeting}
               placeholder={t.ownerPlaceholder}
               chips={t.ownerChips}
-              onEvent={applyView}
+              onEvent={onOwnerEvent}
               renderEvent={(ev) =>
-                ev.tool === "propose_refund" && ev.result?.order_id ? <RefundCard proposal={ev.result} onDone={refresh} t={t} /> : null
+                ev.tool === "propose_refund" && ev.result?.order_id ? (
+                  <RefundCard proposal={ev.result} onDone={refresh} t={t} />
+                ) : ev.tool === "send_payment_reminders" && ev.result?.reminded?.length ? (
+                  <ReminderCard result={ev.result} t={t} />
+                ) : null
               }
             />
           </div>

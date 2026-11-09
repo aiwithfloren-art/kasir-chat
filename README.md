@@ -8,7 +8,8 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 2. **AI builds the order** from the menu and creates a **PayPal checkout** right inside the chat.
 3. **Buyer pays with PayPal**. The server captures the payment and the AI confirms the order.
 4. **Owner sees it live** in an AG Grid dashboard and can **ask the shop questions** in plain language ("How much did we make today?", "Who hasn't paid yet?").
-5. **Refunds with a human in the loop**: the AI can propose a refund, but money only moves after the owner clicks **Approve**.
+5. **AI chases unpaid orders**: the owner says "remind everyone who hasn't paid" and the AI sends each customer a reminder in their own language with a fresh PayPal payment link (shareable anywhere; after paying, PayPal returns the buyer to a receipt page).
+6. **Refunds with a human in the loop**: the AI can propose a refund, but money only moves after the owner clicks **Approve**.
 
 > **Live demo: https://kasir-chat.vercel.app** · runs on **PayPal Sandbox**, no real money moves.
 
@@ -19,12 +20,13 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 | AI creates the order | Orders v2 `POST /v2/checkout/orders` (intent CAPTURE, itemized breakdown) |
 | Buyer pays in chat | PayPal JS SDK Buttons |
 | Payment confirmed | Orders v2 `POST /v2/checkout/orders/{id}/capture` |
+| AI sends a payment reminder | Orders v2 create with `return_url`, shareable approve link → `/paid` captures it |
 | Owner approves refund | Payments v2 `POST /v2/payments/captures/{id}/refund` |
 
 ## How AI is used
 
 - **Buyer agent** (`app/api/buyer`): tool calling with `create_order` and `add_note`. The AI never sets prices: product ids are restricted to the menu and totals are computed on the server.
-- **Owner agent** (`app/api/owner`): tools `query_orders`, `sales_summary`, `propose_refund`. Refunds are only proposed; a person approves them.
+- **Owner agent** (`app/api/owner`): tools `query_orders`, `sales_summary`, `send_payment_reminders`, `propose_refund`. Query tools also filter the live AG Grid table. Refunds are only proposed; a person approves them.
 - Models via [OpenRouter](https://openrouter.ai): `google/gemini-2.5-flash`, falling back to `openai/gpt-4.1-mini`.
 
 ## Tech stack

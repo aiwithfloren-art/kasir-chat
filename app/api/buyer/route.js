@@ -21,7 +21,8 @@ RULES
 - If a message starts with [PAYMENT_CONFIRMED], PayPal verified the payment: thank them, confirm the order id, say the bakery is preparing it.
 - Politely refuse anything unrelated to ordering from this bakery.`;
 
-const tools = {
+// Built per request so tools know the site URL (for PayPal return links) and the page language.
+const makeTools = ({ base, lang }) => ({
   create_order: {
     description: "Create the order and a PayPal checkout for it. Prices are computed by the system.",
     parameters: {
@@ -45,8 +46,10 @@ const tools = {
     },
     run: async ({ customer_name, items, note }) => {
       const order = await newOrder(customer_name, (items || []).map((i) => [i.product_id, i.qty]), note);
-      const pp = await createPaypalOrder(order, SHOP.name);
+      const pp = await createPaypalOrder(order, SHOP.name, base);
       order.paypalOrderId = pp.id;
+      order.payLink = pp.approveUrl;
+      order.lang = lang || "en";
       await saveOrder(order);
       return { order_id: order.id, total: order.total, currency: "USD", items: order.items, paypal_order_id: pp.id };
     },
@@ -66,13 +69,15 @@ const tools = {
       return { ok: true, order_id: o.id, note: o.note };
     },
   },
-};
+});
+
+const siteOrigin = (req) => req.headers.get("origin") || new URL(req.url).origin;
 
 export async function POST(req) {
   if (rateLimited(req)) return Response.json({ text: "Too many messages, please wait a few minutes.", events: [] });
   const { history, lang } = await req.json();
   try {
-    return Response.json(await runAgent({ system: SYSTEM, history: history || [], tools, lang }));
+    return Response.json(await runAgent({ system: SYSTEM, history: history || [], tools: makeTools({ base: siteOrigin(req), lang }), lang }));
   } catch (e) {
     console.error(e);
     return Response.json({ text: "Our AI cashier is busy right now. Please try again in a moment.", events: [] });

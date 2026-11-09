@@ -65,3 +65,18 @@ form.input button { padding: 0 16px; border: 0; border-radius: 12px; background:
 .langs { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; background: #fff; padding: 2px 4px 2px 10px; font-size: 13px; }
 .langs select { border: 0; background: transparent; font: inherit; font-weight: 600; padding: 4px 6px; cursor: pointer; outline: none; }
 @media (max-width: 900px) { header.top { flex-wrap: wrap; } header.top .badge { margin-left: 0; } }
+
+/* Reminders + receipts */
+.remind { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+.remindmsg { font-size: 12px; color: var(--muted); margin: 4px 0; line-height: 1.4; }
+.remind .sent { color: var(--green); font-size: 12px; font-weight: 600; }
+.remind a { font-size: 12px; color: var(--coral); font-weight: 600; }
+.tx { font-size: 11px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+.pill.remindpill { background: #fff4d6; color: #8a5a00; }
+.paidpage { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.paidbox { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 28px; max-width: 440px; width: 100%; text-align: center; }
+.paidbox .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--coral); color: #fff; display: grid; place-items: center; font-weight: 800; margin: 0 auto 12px; }
+.paidbox .tick { font-size: 40px; color: var(--green); }
+.paidbox h2 { font-size: 20px; margin: 8px 0; }
+.paidbox .row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; text-align: left; }
+.paidbox .back { display: inline-block; margin-top: 14px; color: var(--coral); font-weight: 600; }
