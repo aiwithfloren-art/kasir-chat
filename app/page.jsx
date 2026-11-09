@@ -348,13 +348,16 @@ export default function Home() {
           <p>{t.tagline}</p>
         </div>
         <span className="badge">{t.badge}</span>
-        <div className="langs" role="group" aria-label="Language">
-          {LANGS.map((l) => (
-            <button key={l.code} className={l.code === lang ? "on" : ""} onClick={() => setLang(l.code)} title={l.name}>
-              {l.label}
-            </button>
-          ))}
-        </div>
+        <label className="langs">
+          <span aria-hidden="true">🌐</span>
+          <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Language">
+            {LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
       <main className="split">
         <section className="panel buyer">

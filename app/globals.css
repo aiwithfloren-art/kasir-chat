@@ -62,7 +62,6 @@ form.input button { padding: 0 16px; border: 0; border-radius: 12px; background:
 .ag-row.totalrow { font-weight: 700; background: #faf7f0; }
 
 /* Language switch */
-.langs { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: #fff; }
-.langs button { border: 0; background: transparent; padding: 5px 11px; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; }
-.langs button.on { background: var(--coral); color: #fff; }
+.langs { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 999px; background: #fff; padding: 2px 4px 2px 10px; font-size: 13px; }
+.langs select { border: 0; background: transparent; font: inherit; font-weight: 600; padding: 4px 6px; cursor: pointer; outline: none; }
 @media (max-width: 900px) { header.top { flex-wrap: wrap; } header.top .badge { margin-left: 0; } }
