@@ -12,6 +12,8 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 5. **AI chases unpaid orders**: the owner says "remind everyone who hasn't paid" and the AI sends each customer a reminder in their own language with a fresh PayPal payment link (shareable anywhere; after paying, PayPal returns the buyer to a receipt page).
 6. **Refunds with a human in the loop**: the AI can propose a refund, but money only moves after the owner clicks **Approve**.
 
+![Kasir Chat: the customer orders in chat on the left, the owner sees live PayPal payments and asks the AI on the right](docs/screenshot.png)
+
 > **Live demo: https://kasir-chat.vercel.app** · runs on **PayPal Sandbox**, no real money moves.
 
 ## How PayPal is used
