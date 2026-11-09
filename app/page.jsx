@@ -298,7 +298,12 @@ export default function Home() {
             endpoint="/api/buyer"
             greeting="Hi! Welcome to Sunny Crumbs Bakery 🍰 What would you like to order today?"
             placeholder="e.g. 2 brownie boxes for tomorrow, I'm Rina"
-            chips={["What's on the menu?", "1 pandan cake please, name: Alex", "Kak, pesan 2 kue lapis ya, atas nama Rina"]}
+            chips={[
+              "What's on the menu?",
+              "2 brownie boxes for pickup tomorrow, I'm Jess",
+              "Hola, quiero un pastel de pandan, soy Carlos",
+              "Kak, pesan 2 kue lapis ya, atas nama Rina",
+            ]}
             inject={buyerApi}
             renderEvent={(ev) =>
               ev.tool === "create_order" && ev.result?.paypal_order_id ? <PayCard order={ev.result} onPaid={onPaid} /> : null
