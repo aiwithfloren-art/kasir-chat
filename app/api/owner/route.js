@@ -23,7 +23,7 @@ const tools = {
       },
     },
     run: async ({ status = "ALL", period = "all" }) => ({
-      orders: allOrders()
+      orders: (await allOrders())
         .filter((o) => (status === "ALL" || o.status === status) && inPeriod(o, period))
         .map(({ id, customer, items, total, status, createdAt, demo }) => ({
           id, customer, total, status, createdAt, demo,
@@ -38,7 +38,7 @@ const tools = {
       properties: { period: { type: "STRING", enum: ["today", "week", "all"] } },
     },
     run: async ({ period = "today" }) => {
-      const os = allOrders().filter((o) => inPeriod(o, period));
+      const os = (await allOrders()).filter((o) => inPeriod(o, period));
       const paid = os.filter((o) => o.status === "PAID");
       const pending = os.filter((o) => o.status === "PENDING");
       const best = {};
@@ -61,7 +61,7 @@ const tools = {
       required: ["order_id"],
     },
     run: async ({ order_id, reason }) => {
-      const o = findOrder(order_id);
+      const o = await findOrder(order_id);
       if (!o) return { error: "Order not found" };
       if (o.status !== "PAID") return { error: `Order is ${o.status}, only PAID orders can be refunded` };
       if (o.demo || !o.captureId) return { error: "This is a sample order without a real PayPal payment" };

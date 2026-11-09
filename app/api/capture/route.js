@@ -1,9 +1,9 @@
 import { capturePaypalOrder } from "@/lib/paypal";
-import { findByPaypal } from "@/lib/store";
+import { findByPaypal, saveOrder } from "@/lib/store";
 
 export async function POST(req) {
   const { paypalOrderId } = await req.json();
-  const order = findByPaypal(paypalOrderId);
+  const order = await findByPaypal(paypalOrderId);
   if (!order) return Response.json({ error: "Order not found" }, { status: 404 });
   if (order.status === "PAID") return Response.json({ order });
   try {
@@ -13,6 +13,7 @@ export async function POST(req) {
     order.status = "PAID";
     order.paidAt = new Date().toISOString();
     order.captureId = cap.id;
+    await saveOrder(order);
     return Response.json({ order });
   } catch (e) {
     console.error(e);

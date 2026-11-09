@@ -1,5 +1,5 @@
 import { runAgent, rateLimited } from "@/lib/ai";
-import { MENU, SHOP, newOrder, findOrder } from "@/lib/store";
+import { MENU, SHOP, newOrder, findOrder, saveOrder } from "@/lib/store";
 import { createPaypalOrder } from "@/lib/paypal";
 
 const MENU_TEXT = MENU.map((m) => `- ${m.id}: ${m.name} ($${m.price.toFixed(2)}) [also called: ${m.aka}]`).join("\n");
@@ -42,9 +42,10 @@ const tools = {
       required: ["customer_name", "items"],
     },
     run: async ({ customer_name, items, note }) => {
-      const order = newOrder(customer_name, (items || []).map((i) => [i.product_id, i.qty]), note);
+      const order = await newOrder(customer_name, (items || []).map((i) => [i.product_id, i.qty]), note);
       const pp = await createPaypalOrder(order, SHOP.name);
       order.paypalOrderId = pp.id;
+      await saveOrder(order);
       return { order_id: order.id, total: order.total, currency: "USD", items: order.items, paypal_order_id: pp.id };
     },
   },
@@ -56,9 +57,10 @@ const tools = {
       required: ["order_id", "note"],
     },
     run: async ({ order_id, note }) => {
-      const o = findOrder(order_id);
-      if (!o) return { error: "Order not found" };
+      const o = await findOrder(order_id);
+      if (!o || o.demo) return { error: "Order not found" };
       o.note = [o.note, String(note).slice(0, 200)].filter(Boolean).join(" | ");
+      await saveOrder(o);
       return { ok: true, order_id: o.id, note: o.note };
     },
   },
