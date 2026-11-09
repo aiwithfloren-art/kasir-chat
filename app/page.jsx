@@ -217,7 +217,8 @@ function MicButton({ t, disabled, onText, onError }) {
 }
 
 function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject, t, lang, voice }) {
-  const [items, setItems] = useState([{ kind: "msg", role: "model", text: greeting }]);
+  // The greeting follows the page language; the rest of the conversation stays when the language changes.
+  const [items, setItems] = useState([{ kind: "msg", role: "model", greet: true }]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const end = useRef(null);
@@ -237,7 +238,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
     // Chat bubbles + a short memory line for every action card, so the AI remembers what it already did.
     const history = next
       .map((m) => {
-        if (m.kind === "msg") return { role: m.role, text: m.text };
+        if (m.kind === "msg") return m.greet ? { role: "model", text: greeting } : { role: m.role, text: m.text };
         if (m.kind === "event" && m.ev.result?.order_id) {
           const r = m.ev.result;
           if (m.ev.tool === "create_order")
@@ -291,7 +292,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
           ) : m.hidden ? null : (
             <div key={i} className={`msg ${m.role}`}>
               {m.voice && <span className="vn">🎤 {t.voiceNote}</span>}
-              {m.text}
+              {m.greet ? greeting : m.text}
             </div>
           )
         )}
@@ -511,7 +512,6 @@ export default function Home() {
             </div>
           </div>
           <Chat
-            key={`buyer-${lang}`}
             t={t}
             lang={lang}
             voice
@@ -586,7 +586,6 @@ export default function Home() {
               <span>{t.ownerAssistant}</span>
             </div>
             <Chat
-              key={`owner-${lang}`}
               t={t}
               lang={lang}
               endpoint="/api/owner"
