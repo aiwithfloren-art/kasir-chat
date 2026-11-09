@@ -80,3 +80,17 @@ form.input button { padding: 0 16px; border: 0; border-radius: 12px; background:
 .paidbox h2 { font-size: 20px; margin: 8px 0; }
 .paidbox .row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; text-align: left; }
 .paidbox .back { display: inline-block; margin-top: 14px; color: var(--coral); font-weight: 600; }
+
+/* Voice notes */
+form.input .mic { color: var(--ink, #1d1d22); border: 1px solid var(--line); background: #fff; border-radius: 999px; min-width: 42px; padding: 0 10px; font-size: 16px; cursor: pointer; }
+form.input .mic.rec { background: var(--coral); color: #fff; border-color: var(--coral); font-size: 13px; font-weight: 700; animation: micpulse 1s infinite; }
+@keyframes micpulse { 50% { box-shadow: 0 0 0 6px rgba(229, 70, 47, 0.18); } }
+.msg .vn { display: block; font-size: 11px; opacity: 0.7; margin-bottom: 2px; }
+
+/* Customer side drawn as a phone on wide screens, so the video reads "buyer's phone vs owner's dashboard" */
+@media (min-width: 901px) {
+  main.split { grid-template-columns: 400px 1fr; }
+  .panel.buyer { border: 11px solid #1d1d22; border-radius: 42px; box-shadow: 0 18px 40px rgba(29, 29, 34, 0.18); position: relative; overflow: hidden; }
+  .panel.buyer::before { content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 92px; height: 22px; background: #1d1d22; border-radius: 999px; z-index: 2; }
+  .panel.buyer > .head { padding-top: 36px; }
+}

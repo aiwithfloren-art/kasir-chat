@@ -5,6 +5,7 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 **Kasir Chat** ("kasir" means cashier in Indonesian) is an AI cashier that sits in the shop's chat:
 
 1. **Buyer chats naturally**, in any language (UI in 8 languages: English, Spanish, Portuguese, French, Indonesian, Chinese, Japanese, Hindi) ("Kak, pesan 2 kue lapis ya, atas nama Rina").
+   Customers can also **send a voice note** 🎤: it is transcribed by Gemini (audio input) and handled like a typed message.
 2. **AI builds the order** from the menu and creates a **PayPal checkout** right inside the chat.
 3. **Buyer pays with PayPal**. The server captures the payment and the AI confirms the order.
 4. **Owner sees it live** in an AG Grid dashboard and can **ask the shop questions** in plain language ("How much did we make today?", "Who hasn't paid yet?").

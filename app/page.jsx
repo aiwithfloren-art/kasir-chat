@@ -4,6 +4,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 
 import { LANGS, T } from "@/lib/i18n";
+import { startRecording, blobToWavBase64 } from "./voice";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -151,7 +152,71 @@ function ReminderCard({ result, t }) {
 }
 
 // ---------- Generic chat ----------
-function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject, t, lang }) {
+function MicButton({ t, disabled, onText, onError }) {
+  const [state, setState] = useState("idle"); // idle | rec | busy
+  const [secs, setSecs] = useState(0);
+  const rec = useRef(null);
+  const timer = useRef(null);
+  const autoStop = useRef(null);
+  const stopRef = useRef(null);
+  const stop = async () => {
+    clearInterval(timer.current);
+    clearTimeout(autoStop.current);
+    if (!rec.current) return;
+    setState("busy");
+    try {
+      const r0 = rec.current;
+      rec.current = null;
+      const blob = await r0.stop();
+      const audio = await blobToWavBase64(blob);
+      const r = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio }),
+      });
+      const j = await r.json();
+      if (j.text) onText(j.text);
+      else onError(t.voiceFail);
+    } catch {
+      onError(t.voiceFail);
+    }
+    setState("idle");
+  };
+  stopRef.current = stop;
+  const start = async () => {
+    try {
+      rec.current = await startRecording();
+    } catch {
+      return onError(t.micDenied);
+    }
+    setSecs(0);
+    setState("rec");
+    timer.current = setInterval(() => setSecs((s) => s + 1), 1000);
+    autoStop.current = setTimeout(() => stopRef.current(), 30000); // voice notes are capped at 30 s
+  };
+  useEffect(
+    () => () => {
+      clearInterval(timer.current);
+      clearTimeout(autoStop.current);
+      rec.current?.cancel();
+    },
+    []
+  );
+  return (
+    <button
+      type="button"
+      className={`mic ${state}`}
+      disabled={disabled || state === "busy"}
+      onClick={state === "rec" ? stop : start}
+      title={state === "rec" ? t.tapToSend : t.voiceNote}
+      aria-label={t.voiceNote}
+    >
+      {state === "rec" ? `● 0:${String(secs).padStart(2, "0")}` : state === "busy" ? "…" : "🎤"}
+    </button>
+  );
+}
+
+function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject, t, lang, voice }) {
   const [items, setItems] = useState([{ kind: "msg", role: "model", text: greeting }]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -163,9 +228,9 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
     // New Chrome versions return a Promise from scrollIntoView; never return it from an effect.
     end.current?.scrollIntoView({ behavior: "smooth" });
   }, [items, busy]);
-  const send = async (msg, { hidden = false } = {}) => {
+  const send = async (msg, { hidden = false, voice = false } = {}) => {
     if (!msg.trim() || busy) return;
-    const next = [...itemsRef.current, { kind: "msg", role: "user", text: msg, hidden }];
+    const next = [...itemsRef.current, { kind: "msg", role: "user", text: msg, hidden, voice }];
     setItems(next);
     setText("");
     setBusy(true);
@@ -224,7 +289,10 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
           ) : m.kind === "note" ? (
             <div key={i} className="msg sys">{m.text}</div>
           ) : m.hidden ? null : (
-            <div key={i} className={`msg ${m.role}`}>{m.text}</div>
+            <div key={i} className={`msg ${m.role}`}>
+              {m.voice && <span className="vn">🎤 {t.voiceNote}</span>}
+              {m.text}
+            </div>
           )
         )}
         {busy && <div className="typing">{t.typing}</div>}
@@ -246,6 +314,14 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
           send(text);
         }}
       >
+        {voice && (
+          <MicButton
+            t={t}
+            disabled={busy}
+            onText={(txt) => send(txt, { voice: true })}
+            onError={(e) => setItems((c) => [...c, { kind: "note", text: e }])}
+          />
+        )}
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} />
         <button disabled={busy}>{t.send}</button>
       </form>
@@ -438,6 +514,7 @@ export default function Home() {
             key={`buyer-${lang}`}
             t={t}
             lang={lang}
+            voice
             endpoint="/api/buyer"
             greeting={t.buyerGreeting}
             placeholder={t.buyerPlaceholder}
