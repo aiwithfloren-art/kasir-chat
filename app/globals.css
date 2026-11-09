@@ -98,3 +98,15 @@ form.input .mic.rec { background: var(--coral); color: #fff; border-color: var(-
 /* CSV export */
 .csvbtn { margin-left: auto; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .filterchip + .csvbtn { margin-left: 8px; }
+
+/* Never let wide content (the grid, long chips) push the page wider than the screen */
+main.split > *, .owner > * { min-width: 0; }
+.kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.chips button { max-width: 100%; text-align: left; }
+.panel > .head { flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .grid > .head > span { display: none; }
+  .kpi { padding: 10px; }
+  .kpi small { font-size: 11px; }
+  .card { width: 92%; }
+}

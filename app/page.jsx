@@ -226,8 +226,9 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, on
   itemsRef.current = items;
 
   useEffect(() => {
-    // New Chrome versions return a Promise from scrollIntoView; never return it from an effect.
-    end.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll only the message list (scrollIntoView would also scroll the whole page on phones).
+    const box = end.current?.parentElement;
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
   }, [items, busy]);
   const send = async (msg, { hidden = false, voice = false } = {}) => {
     if (!msg.trim() || busy) return;
