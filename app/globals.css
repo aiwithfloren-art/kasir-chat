@@ -55,3 +55,8 @@ form.input button { padding: 0 16px; border: 0; border-radius: 12px; background:
   .kpis { grid-template-columns: 1fr 1fr 1fr; }
   .kpi div { font-size: 18px; }
 }
+
+/* AG Grid extras */
+.filterchip { margin-left: auto; border: 1px solid var(--coral); background: #fff4f1; color: var(--coral); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.ag-row.pendingrow { background: #fffaf0; }
+.ag-row.totalrow { font-weight: 700; background: #faf7f0; }

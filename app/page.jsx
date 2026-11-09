@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 
@@ -114,7 +114,7 @@ function RefundCard({ proposal, onDone }) {
 }
 
 // ---------- Generic chat ----------
-function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onAfterReply, inject }) {
+function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onEvent, onAfterReply, inject }) {
   const [items, setItems] = useState([{ kind: "msg", role: "model", text: greeting }]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -154,6 +154,7 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onAfterRepl
       const j = await r.json();
       const add = [];
       for (const ev of j.events || []) {
+        onEvent?.(ev);
         if (renderEvent(ev)) add.push({ kind: "event", ev });
       }
       if (j.text) add.push({ kind: "msg", role: "model", text: j.text });
@@ -212,6 +213,11 @@ function Chat({ endpoint, placeholder, chips, greeting, renderEvent, onAfterRepl
 export default function Home() {
   const [orders, setOrders] = useState([]);
   const buyerApi = useRef(null);
+  const gridRef = useRef(null);
+  // Table view the owner's AI assistant can set: { status: ALL|PAID|PENDING|REFUNDED, period: today|week|all }
+  const [view, setView] = useState(null);
+  const viewRef = useRef(view);
+  viewRef.current = view;
 
   const refresh = () =>
     fetch("/api/orders")
@@ -242,13 +248,14 @@ export default function Home() {
         headerName: "Items",
         flex: 1,
         minWidth: 180,
-        valueGetter: (p) => p.data.items.map((i) => `${i.qty}× ${i.name}`).join(", "),
+        valueGetter: (p) => p.data.items?.map((i) => `${i.qty}× ${i.name}`).join(", ") ?? p.data.itemsLabel,
       },
-      { field: "total", width: 95, valueFormatter: (p) => usd(p.value) },
+      { field: "total", width: 95, enableCellChangeFlash: true, valueFormatter: (p) => usd(p.value) },
       {
         field: "status",
         width: 115,
-        cellRenderer: (p) => <span className={`pill ${p.value}`}>{p.value}</span>,
+        enableCellChangeFlash: true,
+        cellRenderer: (p) => (p.node.rowPinned ? p.value : <span className={`pill ${p.value}`}>{p.value}</span>),
       },
       {
         field: "createdAt",
@@ -256,7 +263,7 @@ export default function Home() {
         width: 150,
         sort: "desc",
         valueFormatter: (p) =>
-          new Date(p.value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+          p.value && new Date(p.value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       },
     ],
     []
@@ -266,6 +273,42 @@ export default function Home() {
     () => themeQuartz.withParams({ accentColor: "#E5462F", fontFamily: "inherit", headerBackgroundColor: "#FAF7F0", borderColor: "#EBE6DA" }),
     []
   );
+
+  // ---- AG Grid: AI-driven filter + live totals row ----
+  const PERIOD_MS = { today: 24 * 3600e3, week: 7 * 24 * 3600e3 };
+  const isExternalFilterPresent = useCallback(() => !!viewRef.current, []);
+  const doesExternalFilterPass = useCallback((node) => {
+    const v = viewRef.current;
+    const o = node.data;
+    if (v.status && v.status !== "ALL" && o.status !== v.status) return false;
+    const ms = PERIOD_MS[v.period];
+    return !ms || Date.now() - new Date(o.createdAt) < ms;
+  }, []);
+  const updateTotals = useCallback(() => {
+    const api = gridRef.current?.api;
+    if (!api) return;
+    let n = 0;
+    let sum = 0;
+    api.forEachNodeAfterFilter((node) => {
+      n++;
+      sum += node.data.total;
+    });
+    const row = { id: "TOTAL", customer: `${n} orders`, itemsLabel: "Total value in view", total: sum, status: "" };
+    const old = api.getPinnedBottomRow(0)?.data;
+    // Only touch the totals row when it really changed, so the flash means "something happened".
+    if (!old || old.customer !== row.customer || old.total !== row.total) api.setGridOption("pinnedBottomRowData", [row]);
+  }, []);
+  useEffect(() => {
+    gridRef.current?.api?.onFilterChanged();
+  }, [view]);
+  useEffect(() => {
+  const applyView = (ev) => {
+    const v = ev.result?.view;
+    if (!v) return;
+    setView(v.status === "ALL" && v.period === "all" ? null : v);
+  };
+  const viewLabel = (v) =>
+    [v.status && v.status !== "ALL" ? v.status : "all statuses", { today: "last 24h", week: "last 7 days", all: "all time" }[v.period || "all"]].join(" · ");
 
   const onPaid = (order) => {
     refresh();
@@ -332,10 +375,29 @@ export default function Home() {
           <div className="panel grid">
             <div className="head">
               <b>Orders</b>
-              <span>updates live when a PayPal payment lands</span>
+              {view ? (
+                <button className="filterchip" onClick={() => setView(null)}>
+                  Filtered by AI: {viewLabel(view)} ✕
+                </button>
+              ) : (
+                <span>updates live when a PayPal payment lands</span>
+              )}
             </div>
             <div className="ag">
-              <AgGridReact theme={theme} rowData={orders} columnDefs={columns} getRowId={(p) => p.data.id} animateRows />
+              <AgGridReact
+                ref={gridRef}
+                theme={theme}
+                rowData={orders}
+                columnDefs={columns}
+                getRowId={(p) => p.data.id}
+                animateRows
+                isExternalFilterPresent={isExternalFilterPresent}
+                doesExternalFilterPass={doesExternalFilterPass}
+                onFilterChanged={updateTotals}
+                onRowDataUpdated={updateTotals}
+                onGridReady={updateTotals}
+                getRowClass={(p) => (p.node.rowPinned ? "totalrow" : p.data.status === "PENDING" ? "pendingrow" : "")}
+              />
             </div>
           </div>
 
@@ -349,6 +411,7 @@ export default function Home() {
               greeting="Hi boss! Ask me anything about your orders and sales."
               placeholder="e.g. How much did we make today?"
               chips={["How much did we make today?", "Who hasn't paid yet?", "What's my best seller this week?"]}
+              onEvent={applyView}
               renderEvent={(ev) =>
                 ev.tool === "propose_refund" && ev.result?.order_id ? <RefundCard proposal={ev.result} onDone={refresh} /> : null
               }

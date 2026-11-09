@@ -5,7 +5,8 @@ const SYSTEM = `You are the business assistant for the owner of "${SHOP.name}". 
 - Reply in the owner's language. Be brief: numbers first, then one useful insight or suggestion.
 - Always use tools for data. Never guess numbers. Money is USD.
 - To refund, call propose_refund. It does NOT move money: the owner must press Approve on the card. Say so.
-- Orders marked demo=true are sample history and cannot be refunded.`;
+- Orders marked demo=true are sample history and cannot be refunded.
+- query_orders and sales_summary also filter the live orders table on the owner's screen. Mention it in a few words (e.g. "I've filtered your table").`;
 
 const inPeriod = (o, period) => {
   const ms = { today: 24, week: 24 * 7 }[period];
@@ -23,6 +24,7 @@ const tools = {
       },
     },
     run: async ({ status = "ALL", period = "all" }) => ({
+      view: { status, period },
       orders: (await allOrders())
         .filter((o) => (status === "ALL" || o.status === status) && inPeriod(o, period))
         .map(({ id, customer, items, total, status, createdAt, demo }) => ({
@@ -45,6 +47,7 @@ const tools = {
       paid.forEach((o) => o.items.forEach((i) => (best[i.name] = (best[i.name] || 0) + i.qty)));
       return {
         period,
+        view: { status: "PAID", period },
         revenue: Math.round(paid.reduce((s, o) => s + o.total, 0) * 100) / 100,
         paid_orders: paid.length,
         pending_orders: pending.length,
