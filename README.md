@@ -30,6 +30,17 @@ Millions of small sellers (home bakers, resellers, small shops) take orders thro
 - **Owner agent** (`app/api/owner`): tools `query_orders`, `sales_summary`, `send_payment_reminders`, `propose_refund`. Query tools also filter the live AG Grid table. Refunds are only proposed; a person approves them.
 - Models via [OpenRouter](https://openrouter.ai): `google/gemini-2.5-flash`, falling back to `openai/gpt-4.1-mini`.
 
+## How AG Grid is used
+
+The owner's dashboard is an AG Grid table of every order, and the AI drives it:
+
+- **Live payments view**: rows update as PayPal payments are captured; status and total cells flash when they change.
+- **AI-controlled filtering**: when the owner asks "Who hasn't paid yet?" or "How much did we make today?", the assistant's tools return a view, and the grid applies it as an external filter (with a chip to clear it).
+- **Totals row**: a pinned bottom row sums the orders currently in view.
+- **Follow-up column**: shows how many payment reminders the AI has sent per order.
+- **CSV export**: one click exports exactly the rows in view, for bookkeeping.
+- Column headers follow the page language (8 languages).
+
 ## Tech stack
 
 Next.js 16 (React 19) · PayPal Orders v2 + Payments v2 + JS SDK · OpenRouter (Gemini 2.5 Flash) · AG Grid Community · Upstash Redis · hosted on Vercel

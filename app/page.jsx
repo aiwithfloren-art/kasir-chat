@@ -470,6 +470,12 @@ export default function Home() {
     if (!v) return;
     setView(v.status === "ALL" && v.period === "all" ? null : v);
   };
+  // AG Grid's built-in CSV export: exactly the rows in view (AI filter included), for the shop's bookkeeping.
+  const exportCsv = () =>
+    gridRef.current?.api?.exportDataAsCsv({
+      fileName: `orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      skipPinnedBottom: true,
+    });
   const viewLabel = (v) =>
     [v.status && v.status !== "ALL" ? v.status : t.allStatuses, t.periods[v.period || "all"]].join(" · ");
 
@@ -561,6 +567,9 @@ export default function Home() {
               ) : (
                 <span>{t.ordersHint}</span>
               )}
+              <button className="csvbtn" onClick={exportCsv}>
+                ⬇ {t.exportCsv}
+              </button>
             </div>
             <div className="ag">
               <AgGridReact
