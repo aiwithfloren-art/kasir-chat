@@ -4,6 +4,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 
 import { LANGS, T } from "@/lib/i18n";
+import { SHOP, MENU } from "@/lib/menu";
 import { startRecording, blobToWavBase64 } from "./voice";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -213,6 +214,30 @@ function MicButton({ t, disabled, onText, onError }) {
     >
       {state === "rec" ? `● 0:${String(secs).padStart(2, "0")}` : state === "busy" ? "…" : "🎤"}
     </button>
+  );
+}
+
+// The shop's real price list, so anyone can check the PayPal total against it.
+function MenuButton({ t }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="menuwrap">
+      <button className="menubtn" onClick={() => setOpen((o) => !o)}>
+        📋 {t.menuBtn}
+      </button>
+      {open && (
+        <div className="menupop" onClick={() => setOpen(false)}>
+          <b>{SHOP.name}</b>
+          {MENU.map((m) => (
+            <div key={m.id} className="menurow">
+              <span>{m.name}</span>
+              <span>${m.price.toFixed(2)}</span>
+            </div>
+          ))}
+          <small>{t.menuNote}</small>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -517,6 +542,7 @@ export default function Home() {
               <br />
               <span>{t.customerView}</span>
             </div>
+            <MenuButton t={t} />
           </div>
           <Chat
             t={t}

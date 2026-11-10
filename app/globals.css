@@ -110,3 +110,13 @@ main.split > *, .owner > * { min-width: 0; }
   .kpi small { font-size: 11px; }
   .card { width: 92%; }
 }
+
+/* Menu / price list */
+.menuwrap { margin-left: auto; position: relative; }
+.menubtn { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.menubtn:hover { border-color: var(--coral); }
+.menupop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 260px; max-width: 80vw; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 12px; font-size: 13px; cursor: pointer; }
+.menupop b { display: block; margin-bottom: 6px; }
+.menurow { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.menurow span:last-child { font-weight: 700; white-space: nowrap; }
+.menupop small { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; }
