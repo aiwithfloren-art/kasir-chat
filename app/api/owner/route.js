@@ -60,15 +60,31 @@ const makeTools = ({ base }) => ({
     },
   },
   propose_refund: {
-    description: "Prepare a refund for a PAID order. Shows an Approve card to the owner; no money moves until approved.",
+    description:
+      "Prepare a refund for a PAID order. Give the order id, or the customer's name if the owner only says a name. Shows an Approve card to the owner; no money moves until approved.",
     parameters: {
       type: "OBJECT",
-      properties: { order_id: { type: "STRING" }, reason: { type: "STRING" } },
-      required: ["order_id"],
+      properties: {
+        order_id: { type: "STRING", description: "e.g. SC-1101 (optional if customer is given)" },
+        customer: { type: "STRING", description: "Customer name, e.g. Jess" },
+        reason: { type: "STRING" },
+      },
     },
-    run: async ({ order_id, reason }) => {
-      const o = await findOrder(order_id);
-      if (!o) return { error: "Order not found" };
+    run: async ({ order_id, customer, reason }) => {
+      let o = order_id ? await findOrder(String(order_id).trim().toUpperCase()) : null;
+      // Owners usually say a name ("refund Jess"), not an order id: find that customer's latest real paid order.
+      const name = String(customer || (!o && order_id) || "").trim().toLowerCase();
+      if (!o && name) {
+        const match = (c) => {
+          const n = String(c || "").toLowerCase();
+          return n === name || n.startsWith(name) || name.startsWith(n);
+        };
+        const mine = (await allOrders())
+          .filter((x) => match(x.customer))
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        o = mine.find((x) => x.status === "PAID" && !x.demo && x.captureId) || mine[0];
+      }
+      if (!o) return { error: "Order not found. Ask the owner for the order id." };
       if (o.status !== "PAID") return { error: `Order is ${o.status}, only PAID orders can be refunded` };
       if (o.demo || !o.captureId) return { error: "This is a sample order without a real PayPal payment" };
       return { order_id: o.id, customer: o.customer, total: o.total, reason: reason || "" };
